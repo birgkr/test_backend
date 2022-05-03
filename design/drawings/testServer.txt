@@ -1,0 +1,56 @@
+@startuml
+
+class TypeEnum 
+{
+  URL, 
+  HEADER, 
+  DATA
+}
+
+class Matcher 
+{
+  TypeEnum t
+  Regexp re
+  bool negatedTest
+}
+
+
+class Response
+{
+  int code
+  List<Header> headers
+  Data data
+}
+
+class RequestRule 
+{
+  List<Matcher> matchers
+  Response resp
+}
+
+class CollectionType
+{
+  ALL_IN_ORDER,
+  ALL_ANY_ORDER,
+  ONE_OF
+}
+
+class RuleCollection
+{
+  CollectionType type
+  List<RequestRule> rules
+}
+
+class TestServer 
+{
+  List<RuleCollection> ruleCollections
+  
+  addRule(json)
+  void handleRequest()
+  validate()
+  reset()
+  stop()
+}
+
+
+@enduml

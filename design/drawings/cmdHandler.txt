@@ -1,0 +1,19 @@
+@startuml
+
+class CmdRetStatus
+{
+  int uid
+  string cmd
+  int code
+  string text
+}
+
+class CommandHandler
+{
+  handleMsg()
+  parseCommand()
+  sendStatus()
+}
+
+
+@enduml
