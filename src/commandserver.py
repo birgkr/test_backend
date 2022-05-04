@@ -39,6 +39,7 @@ class TransportPDU:
         """Get message data as json object"""
         return None
 
+
 class CmdRetStatus:
     STAT_SUCCESS = 0
     STAT_ERROR = 1
@@ -52,10 +53,8 @@ class CmdRetStatus:
         self.text = text
 
     def toJsonStr(self):
-        return json.dumps({'UID': self.uid, 
-         'COMMAND': self.cmd, 
-         'CODE': self.code, 
-         'TEXT': self.text }).encode('utf-8')
+        d = {k.upper():v for k,v in self.__dict__.items()}
+        return json.dumps(self.__dict__, default=lambda x: {k.upper():v for k,v in x.__dict__.items()}).encode('utf-8')
 
 
 class CommandRequestHandler(socketserver.BaseRequestHandler):
@@ -77,6 +76,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
             # Parse the command
             retObj = self.parseCmd(cmdObj)
+            
             # Send back command status
             #TODO: Use message structure (magic, dataSize, ...)
             self.request.sendall(retObj.toJsonStr())
@@ -118,7 +118,9 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         nextServerId += 1
         newServer.start()
 
-        return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Started server, id: {}'.format(newServer.id))
+        retObj = CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Started server, id: {}'.format(newServer.id))
+        retObj.command_data = { 'SERVER_ID':newServer.id }
+        return retObj
 
     def cmdResetServer(self, cmdData):
         serverId = cmdData['SERVER_ID']

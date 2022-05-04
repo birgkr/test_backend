@@ -63,6 +63,8 @@ Response
 
 #### Kill server
 
+#### Fetch status
+
 #### Add rule
 
 ```
