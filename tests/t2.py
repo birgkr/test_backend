@@ -6,6 +6,7 @@ from os import path
 sys.path.append('../src')
 
 import testapi
+from testapi import Rule, Response
 
 
 import unittest
@@ -18,14 +19,14 @@ class TestCommandProt(unittest.TestCase):
       httpServer.reset()
 
     def test_1(self):
-      print("1")
-      #self.backend.expect(Rule().url("").header("","").data("")).Times(AtLeast(3)).response(200, data="", headers=[])
+      #httpServer.expect(Rule().url("").header("","").data("").times(2))
       pass
-        
+
     def test_2(self):
-      print("2")
-      #self.backend.expect(Rule().url("").header("","").data("")).Times(AtLeast(3)).response(200, data="", headers=[])
-      pass
+      httpServer.expect(Rule().url("").header("","").data("")
+                              .times(2)
+                              .respondWith(Response().code(200).data("").headers([('apa', 'bepa'), ('cepa','depa')])))
+      
 
     def tearDown(self):
       stat = httpServer.fetchStatus()

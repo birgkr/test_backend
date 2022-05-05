@@ -59,41 +59,110 @@ class HttpServer:
     def fetchStatus(self):
         return ""
 
+    def expect(self, rule):
+        jsonData = { 'COMMAND': 'ADD_RULE',
+                     'COMMAND_DATA': { 'SERVER_ID': self.id, 'RULE': rule.toJson() }  }
+        resp = self.cmdSrv.sendCommand(jsonData)
+        
+
+
 
 class Response:
     def __init__(self):
-        self.code = 200
-        self.headers = []
-        self.data = ""
+        self.statusCode = 200
+        self.respHeaders = None
+        self.respData = None
+
+    def toJson(self):
+        retObj = {'CODE': self.statusCode}
+        if self.respHeaders:
+            retObj['HEADERS'] = [ {h[0]: h[1]} for h in self.respHeaders ]
+        if self.respData:
+            retObj['DATA'] = self.respData
+        return retObj
+
+    def code(self, code):
+        self.statusCode = code
+        return self
+
+    def headers(self, headers):
+        self.respHeaders = headers
+        return self
+
+    def data(self, data):
+        self.respData = data
+        return self
+
 
 class Matcher:
-    def __init__(self):
-        pass
+    URL = 0
+    METHOD = 1
+    HEADER = 2
+    DATA = 3
+
+    def __init__(self, entity, matchValue):
+        self.entity = entity
+        self.matchValue = matchValue
+        self.negate = False
+
+    def toJson(self):
+        return { 'TYPE': self.entity,
+                 'VALUE': self.matchValue,
+                 'NEGATE': self.negate
+        }
+    
 
 class Rule:
     def __init__(self):
         self.matchers = []
+        self.callTimes = 1
+        self.response = None
 
-class Expectation:
-    def __init__(self):
-        self.response = Response()
+    def toJson(self):
+        return {
+            'TYPE': 'MATCHER',
+            'MATCHERS': [m.toJson() for m in self.matchers],
+            'TIMES': self.callTimes,
+            'RESPONSE': self.response.toJson()
+        }
 
-    def times(t):
+
+    def times(self, t):
+        self.callTimes = t
         return self
-        
+
+    def method(self, method):
+        m = Matcher(Matcher.METHOD, method)
+        self.matchers.append(m)
+        return self
 
 
-class TestServer:
-    def __init__(self):
-        pass
+    def url(self, url):
+        m = Matcher(Matcher.URL, url)
+        self.matchers.append(m)
+        return self
 
-    def expect(self, rule: Rule) -> Expectation:
-        e = Expectation()
-        return e
+    def header(self, headerKey, headerVal):
+        m = Matcher(Matcher.HEADER, (headerKey, headerVal))
+        self.matchers.append(m)
+        return self
 
-    def collection(self):
-        pass
+    def headers(self, headers):
+        for h in headers:
+            m = Matcher(Matcher.HEADER, h)
+            self.matchers.append(m)
+        return self
 
+    def data(self, data):
+        m = Matcher(Matcher.DATA, data)
+        self.matchers.append(m)
+        return self
+
+    def respondWith(self, r):
+        self.response = r
+        return self
+
+   
 
 if __name__ == "__main__":
     pass

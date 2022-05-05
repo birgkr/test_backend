@@ -131,12 +131,14 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
     def cmdAddServerRule(self, cmdData):
         serverId = cmdData['SERVER_ID']
+        print(json.dumps(cmdData, indent=2))
+
         rule = rules.RequestRule(cmdData['RULE'])
 
         global testServers
         testServers[serverId].addRule(rule)
-
         print(rule)
+
         return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Added rule')
 
 
