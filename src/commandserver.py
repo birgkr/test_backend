@@ -14,6 +14,7 @@ import json
 import commands
 import testserver
 import rules
+import testapi
 
 
 nextServerId = 1
@@ -99,8 +100,14 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         # Execute the incomming command
         if cmd['COMMAND'].upper() == "START_SERVER":
             retObj = self.cmdStartServer(cmd['COMMAND_DATA'])
+        elif cmd['COMMAND'].upper() == "RESET_SERVER":
+            retObj = self.cmdResetServer(cmd['COMMAND_DATA'])
+        elif cmd['COMMAND'].upper() == "KILL_SERVER":
+            retObj = self.cmdKillServer(cmd['COMMAND_DATA'])
         elif cmd['COMMAND'].upper() == "ADD_RULE":
             retObj = self.cmdAddServerRule(cmd['COMMAND_DATA'])
+        elif cmd['COMMAND'].upper() == "FETCH_STATUS":
+            retObj = self.cmdFetchStatus(cmd['COMMAND_DATA'])
         
         retObj.uid = cmd['UID']
         retObj.cmd = cmd['COMMAND']
@@ -124,24 +131,64 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
     def cmdResetServer(self, cmdData):
         serverId = cmdData['SERVER_ID']
-        pass
+        global testServers
+        testServers[serverId].reset()
+        return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Server reset')
 
-    def cmdRemoveServer(self, cmdData):
-        pass
+    def cmdKillServer(self, cmdData):
+        serverId = cmdData['SERVER_ID']
+        global testServers
+        testServers.pop(serverId).stop()
+        
+        return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Server killed')
 
     def cmdAddServerRule(self, cmdData):
         serverId = cmdData['SERVER_ID']
-        print(json.dumps(cmdData, indent=2))
+        #print(json.dumps(cmdData['RULE'], indent=2))
 
-        rule = rules.RequestRule(cmdData['RULE'])
+        rule = self.ruleFromJson(cmdData['RULE'])
+        #print(rule)
 
         global testServers
         testServers[serverId].addRule(rule)
-        print(rule)
-
         return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Added rule')
 
+    def cmdFetchStatus(self, cmdData):
+        serverId = cmdData['SERVER_ID']
+        return CmdRetStatus(code=CmdRetStatus.STAT_NOT_IMPLEMENTED, text='Fetch status')
 
+
+    def ruleFromJson(self, ruleData):
+        rule = rules.RequestRule()
+
+        if ruleData['TYPE'] == 'MATCHER':
+            rule.type = rules.RequestRule.MATCHER
+            for m in ruleData['MATCHERS']:
+                rule.addMatcher(self.matcherFromJson(m))
+            if 'TIMES' in ruleData:
+                rule.times = int(ruleData['TIMES'])
+            if 'RESPONSE' in ruleData:
+                rule.setResponse(self.responseFromJson(ruleData['RESPONSE']))
+
+        return rule
+
+    def matcherFromJson(self, mData):
+        matcher = rules.Matcher()
+
+        matcher.type = mData['TYPE']
+        matcher.matchValue = mData['VALUE']
+        matcher.negate = mData['NEGATE']
+
+        return matcher
+
+    def responseFromJson(self, rData):
+        resp = rules.Response()
+        resp.code = int(rData['CODE'])
+        if 'HEADERS' in rData:
+            resp.headers = rData['HEADERS']
+        if 'DATA' in rData:
+            resp.data = rData['DATA']
+        return resp
 
 
 class CommandServer():

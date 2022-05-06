@@ -56,8 +56,15 @@ class HttpServer:
                      'COMMAND_DATA': { 'SERVER_ID': self.id }  }
         resp = self.cmdSrv.sendCommand(jsonData)
     
+    def kill(self):
+        jsonData = { 'COMMAND': 'KILL_SERVER',
+                     'COMMAND_DATA': { 'SERVER_ID': self.id }  }
+        resp = self.cmdSrv.sendCommand(jsonData)
+
     def fetchStatus(self):
-        return ""
+        jsonData = { 'COMMAND': 'FETCH_STATUS',
+                     'COMMAND_DATA': { 'SERVER_ID': self.id }  }
+        resp = self.cmdSrv.sendCommand(jsonData)
 
     def expect(self, rule):
         jsonData = { 'COMMAND': 'ADD_RULE',
@@ -76,7 +83,7 @@ class Response:
     def toJson(self):
         retObj = {'CODE': self.statusCode}
         if self.respHeaders:
-            retObj['HEADERS'] = [ {h[0]: h[1]} for h in self.respHeaders ]
+            retObj['HEADERS'] = self.respHeaders
         if self.respData:
             retObj['DATA'] = self.respData
         return retObj
@@ -95,10 +102,11 @@ class Response:
 
 
 class Matcher:
-    URL = 0
-    METHOD = 1
-    HEADER = 2
-    DATA = 3
+    URL = "URL"
+    METHOD = "METHOD"
+    HEADER = "HEADER"
+    DATA = "DATA"
+    FILE_DATA = "FILE_DATA"
 
     def __init__(self, entity, matchValue):
         self.entity = entity
@@ -148,8 +156,8 @@ class Rule:
         return self
 
     def headers(self, headers):
-        for h in headers:
-            m = Matcher(Matcher.HEADER, h)
+        for k in headers:
+            m = Matcher(Matcher.HEADER, (k,headers[k]))
             self.matchers.append(m)
         return self
 
