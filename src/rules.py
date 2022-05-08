@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
 class Matcher:
+    URL = "URL"
+    METHOD = "METHOD"
+    HEADER = "HEADER"
+    DATA = "DATA"
+    FILE_DATA = "FILE_DATA"
+    
     def __init__(self):
         self.type = None
         self.matchValue = None
@@ -10,10 +16,10 @@ class Matcher:
         return "{}: {}'{}'".format(self.type, "not matching " if self.negate else "", self.matchValue)
 
 class Response:
-    def __init__(self):
-        self.code = 200
-        self.headers = []
-        self.data = b''
+    def __init__(self, code=200, headers=[], data=b''):
+        self.code = code
+        self.headers = headers
+        self.data = data
 
     def __str__(self):
         ret = f"Status code: {self.code}\n"

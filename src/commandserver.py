@@ -155,7 +155,10 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
     def cmdFetchStatus(self, cmdData):
         serverId = cmdData['SERVER_ID']
-        return CmdRetStatus(code=CmdRetStatus.STAT_NOT_IMPLEMENTED, text='Fetch status')
+        stat = testServers[serverId].getAndClearStatus()
+        retObj = CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Fetch status')
+        retObj.command_data = stat
+        return retObj
 
 
     def ruleFromJson(self, ruleData):

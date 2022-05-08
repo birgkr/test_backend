@@ -3,6 +3,7 @@
 import sys
 from os import path
 import requests
+import json
 
 sys.path.append('../src')
 
@@ -20,24 +21,34 @@ class TestCommandProt(unittest.TestCase):
       httpServer.reset()
 
     def test_1(self):
-      httpServer.expect(Rule().url("banan").method("GET")
+      httpServer.expect(Rule().url("banan").method("GET").header(testapi.exact("apa"), "bepa")
                               .times(1)
                               .respondWith(Response().code(200).data("Hello 1!")))
 
       r = requests.get(url = "http://localhost:8090/banan", headers = {"apa": "bepa"})
-      print(r.text)
-                              
+
+      self.assertTrue(*httpServer.checkStatus())
+
+
     def test_2(self):
-      httpServer.expect(Rule().url("/apa")
+      httpServer.expect(Rule().url("apa")
                               .times(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
       
-      httpServer.expect(Rule().url("/apa2")
+      httpServer.expect(Rule().url("apa2")
                               .times(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
 
+
+      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/apa2", headers = {'apa': 'bepa', 'cepa':'depa'})
+
+
+      self.assertTrue(*httpServer.checkStatus())
+
     def tearDown(self):
-      stat = httpServer.fetchStatus()
+      pass
+
 
 
 

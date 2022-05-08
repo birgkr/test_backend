@@ -11,6 +11,8 @@ def upperKey(inParam):
     else:
         return inParam
 
+def exact(s):
+    return f"^{s}$"
 
 class CmdServer:
     def __init__(self):
@@ -65,6 +67,24 @@ class HttpServer:
         jsonData = { 'COMMAND': 'FETCH_STATUS',
                      'COMMAND_DATA': { 'SERVER_ID': self.id }  }
         resp = self.cmdSrv.sendCommand(jsonData)
+        return resp
+
+    def checkStatus(self):
+        allStatus = self.fetchStatus()['COMMAND_DATA']
+
+        allOk = True
+        msg = "\n"
+        for stat in allStatus:
+            if not stat['ALLOK']:
+                allOk = False
+
+                msg += f"For the request '{stat['METHOD']} {stat['URI']}'\n"
+                for e in stat['FAILEDEXPECTS']:
+                    msg += "  " + e + "\n"
+                msg += "\n"
+
+        return allOk, msg
+
 
     def expect(self, rule):
         jsonData = { 'COMMAND': 'ADD_RULE',
