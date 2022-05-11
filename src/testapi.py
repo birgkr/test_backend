@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 
+import logging
 import socket
 import json
+
+logger = logging.getLogger(__name__)
+
 
 def upperKey(inParam):
     if type(inParam) is dict:
@@ -77,11 +81,13 @@ class HttpServer:
         for stat in allStatus:
             if not stat['ALLOK']:
                 allOk = False
-
-                msg += f"For the request '{stat['METHOD']} {stat['URI']}'\n"
-                for e in stat['FAILEDEXPECTS']:
-                    msg += "  " + e + "\n"
-                msg += "\n"
+                if stat['NEVERRECEIVED']:
+                    msg += f"Expected request...\n"
+                else:
+                    msg += f"For the request '{stat['METHOD']} {stat['URI']}'\n"
+                    for e in stat['FAILEDEXPECTS']:
+                        msg += "  " + e + "\n"
+                    msg += "\n"
 
         return allOk, msg
 

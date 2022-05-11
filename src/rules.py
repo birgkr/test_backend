@@ -52,7 +52,9 @@ class RequestRule:
         indent = " " * tabSize * tab
         indent2 = indent + " " * tabSize
         if self.type == RequestRule.MATCHER:
-            retStr = f"{indent}Matchers...\n"
+            retStr = "== Rule ==\n"
+            retStr += f"Times: {self.times}\n"
+            retStr += f"{indent}Matchers...\n"
             for m in self.matchers:
                 retStr += f"{indent2}{str(m)}\n"
 

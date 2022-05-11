@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+
+import logging
 import sys
 from os import path
 import requests
@@ -35,13 +37,13 @@ class TestCommandProt(unittest.TestCase):
                               .times(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
       
-      httpServer.expect(Rule().url("apa2")
+      httpServer.expect(Rule().url("bepa")
                               .times(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
 
 
       r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://localhost:8090/apa2", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
 
 
       self.assertTrue(*httpServer.checkStatus())
@@ -53,6 +55,16 @@ class TestCommandProt(unittest.TestCase):
 
 
 if __name__ == "__main__":
+
+  # configure logging
+  logging.getLogger("requests").setLevel(logging.WARNING)
+  logging.getLogger("urllib3").setLevel(logging.WARNING)
+  logging.basicConfig(level=logging.DEBUG, format='%(asctime)s.%(msecs)03d [%(levelname)s: %(threadName)s] %(filename)s:%(lineno)d > %(message)s', datefmt='%H:%M:%S',
+                      handlers=[
+                          logging.FileHandler(filename="tests.log", mode='w'),
+                          logging.StreamHandler()
+                      ])
+
   cmdSrv = testapi.CmdServer()
   cmdSrv.connect()
   httpServer = cmdSrv.startServer()

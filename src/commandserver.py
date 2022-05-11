@@ -7,7 +7,7 @@
 
 #TODO: Add logging
 
-from socket import MSG_DONTWAIT
+import logging
 import socketserver
 import json
 
@@ -16,6 +16,8 @@ import testserver
 import rules
 import testapi
 
+
+logger = logging.getLogger(__name__)
 
 nextServerId = 1
 testServers = {}
@@ -65,7 +67,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         magic = self.request.recv(1)
         while len(magic) == 1:
             if magic != b'\xA5':
-                print("Invalid magic!")
+                logger.warning(f"Invalid magic in protocol...")
             #TODO validate protocol version               
             versionId = self.request.recv(1)
             dataSize = int.from_bytes(self.request.recv(4), 'big')
@@ -78,6 +80,8 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             # Parse the command
             retObj = self.parseCmd(cmdObj)
             
+
+            logger.debug(f"Send response for command {cmdObj['COMMAND']}...")
             # Send back command status
             #TODO: Use message structure (magic, dataSize, ...)
             self.request.sendall(retObj.toJsonStr())
@@ -88,14 +92,13 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             except:
                 break
 
-        #print('Done')
 
 
     def parseCmd(self, cmd):
         # Initialise base return status message
         retObj = CmdRetStatus(code=CmdRetStatus.STAT_INVALID_CMD, text='Unknown command: {}'.format(cmd['COMMAND']))
 
-        print(f"Incoming command: {cmd['COMMAND'].upper()}")
+        logger.debug(f"Received command: {cmd['COMMAND']}")
 
         # Execute the incomming command
         if cmd['COMMAND'].upper() == "START_SERVER":
@@ -120,6 +123,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         global nextServerId
         global testServers
 
+        logger.debug(f"Starting test server with id '{nextServerId}' at port '{lPort}'")
         newServer = testserver.TestServer(nextServerId, lPort)
         testServers[nextServerId] = newServer
         nextServerId += 1
@@ -132,22 +136,25 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
     def cmdResetServer(self, cmdData):
         serverId = cmdData['SERVER_ID']
         global testServers
+
+        logger.debug(f"Resetting server with id '{serverId}'")
         testServers[serverId].reset()
         return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Server reset')
 
     def cmdKillServer(self, cmdData):
         serverId = cmdData['SERVER_ID']
         global testServers
+
+        logger.debug(f"Stopping server with id '{serverId}'")
         testServers.pop(serverId).stop()
         
         return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Server killed')
 
     def cmdAddServerRule(self, cmdData):
         serverId = cmdData['SERVER_ID']
-        #print(json.dumps(cmdData['RULE'], indent=2))
 
+        logger.debug(f"Adding rule to server with id '{serverId}'")
         rule = self.ruleFromJson(cmdData['RULE'])
-        #print(rule)
 
         global testServers
         testServers[serverId].addRule(rule)
@@ -155,7 +162,9 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
     def cmdFetchStatus(self, cmdData):
         serverId = cmdData['SERVER_ID']
-        stat = testServers[serverId].getAndClearStatus()
+
+        logger.debug(f"Fetch status for server with id '{serverId}'")
+        stat = testServers[serverId].getStatus()
         retObj = CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Fetch status')
         retObj.command_data = stat
         return retObj
@@ -196,11 +205,20 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
 class CommandServer():
     def __init__(self, host="localhost", port=8070):
+        logger.info(f"Starting command server at'{host}:{port}'")
         socketserver.TCPServer.allow_reuse_address = True
         self.srv = socketserver.TCPServer(("0.0.0.0", port), CommandRequestHandler)
         self.srv.serve_forever()
 
 if __name__ == "__main__":
+    # configure logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s.%(msecs)03d [%(levelname)s: %(threadName)s] %(filename)s:%(lineno)d > %(message)s', datefmt='%H:%M:%S',
+                        handlers=[
+                            logging.FileHandler(filename="tests.log", mode='w'),
+                            logging.StreamHandler()
+                        ])
+        
+    
     cmdSrv = CommandServer()
     #httpSrv = 
 
