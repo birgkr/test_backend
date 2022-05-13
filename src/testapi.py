@@ -45,7 +45,7 @@ class CmdServer:
         return upperKey(json.loads(rData))
 
 
-    def startServer(self, port=8090):
+    def startTestServer(self, port=8090):
         jsonData = {'COMMAND': 'START_SERVER',
                     'COMMAND_DATA': { 'LPORT': port }  }
         resp = self.sendCommand(jsonData)
@@ -75,6 +75,7 @@ class HttpServer:
 
     def checkStatus(self):
         allStatus = self.fetchStatus()['COMMAND_DATA']
+        #print(json.dumps(allStatus, indent=2))
 
         allOk = True
         msg = "\n"
@@ -149,20 +150,34 @@ class Matcher:
 class Rule:
     def __init__(self):
         self.matchers = []
-        self.callTimes = 1
+        self.calledAtLeast = 1
+        self.calledAtMost = 1
         self.response = None
 
     def toJson(self):
         return {
             'TYPE': 'MATCHER',
             'MATCHERS': [m.toJson() for m in self.matchers],
-            'TIMES': self.callTimes,
+            'CALLED_TIMES': {'AT_LEAST': self.calledAtLeast, 'AT_MOST': self.calledAtMost},
             'RESPONSE': self.response.toJson()
         }
 
+    def matchTimes(self, t):
+        self.calledAtLeast = t
+        self.calledAtMost = t
+        return self
 
-    def times(self, t):
-        self.callTimes = t
+    def matchAtLeast(self, t):
+        self.calledAtLeast = t
+        return self
+
+    def matchAtMost(self, t):
+        self.calledAtLeast = t
+        return self
+
+    def matchTimesBetween(self, t1, t2):
+        self.calledAtLeast = t1
+        self.calledAtMost = t2
         return self
 
     def method(self, method):
@@ -189,6 +204,11 @@ class Rule:
 
     def data(self, data):
         m = Matcher(Matcher.DATA, data)
+        self.matchers.append(m)
+        return self
+
+    def fileData(self, filePath):
+        m = Matcher(Matcher.FILE_DATA, filePath)
         self.matchers.append(m)
         return self
 

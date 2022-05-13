@@ -42,8 +42,11 @@ class RequestRule:
     def __init__(self):
         self.type = None
         self.matchers = []
-        self.times = 0
+        self.calledAtLeast = 0
+        self.calledAtMost = 0
         self.response = None
+
+        self.times = 0
 
     def __str__(self):
         return self.toStr(tab=0, tabSize=2)

@@ -18,6 +18,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         self.processRequest()
                     
+    def do_PUT(self):
+        self.processRequest()
     
     def processRequest(self):
         # Validate the request
@@ -66,9 +68,8 @@ class TestServer:
         self.port = port
         self.ifAddr = ifAddr
         self.server = None
-
         self.rules = [] # List of objects of type rules.RequestRule
-        self.status = []
+        self.status = [] # List of validation status (one for each expectation rule plus one for each request that was received but not expected)
 
 
     def serverRun(self):
@@ -76,11 +77,10 @@ class TestServer:
         self.server.allow_reuse_address = True
         self.server.owner = self
         logger.info(f"Starting test server at {self.ifAddr}, {self.port}")
-
         self.server.serve_forever()
 
+
     def start(self):
-        #print("Start test server at port: {}".format(self.port))
         logger.debug(f"Starting test server thread...")
         self.srvThread = threading.Thread(target=TestServer.serverRun, name="T-TestServer", args=(self,))
         self.srvThread.start()
@@ -88,7 +88,6 @@ class TestServer:
 
     def reset(self):
         logger.debug(f"Resetting test server '{self.id}'")
-
         self.rules = []
         self.status = []
 
@@ -120,10 +119,9 @@ class TestServer:
 
     def validateRequest(self, request):
         #TODO: collections
+
         # Check if expecting any requests...
-
-        rs = RequestsStatus(request.command, request.path, { k:v for k,v in request.headers.items() })
-
+        rs = RequestsStatus(request.command, request.path, [{'KEY':k, 'VALUE':v} for k,v in request.headers.items() ])
         if len(self.rules) == 0:
             rs.addFail("No request expected, but received one...")
             self.status.append( rs ) 
@@ -133,9 +131,9 @@ class TestServer:
 
         # Get the rule in question...
         r = self.rules[0]
-        r.times -= 1
+        r.times += 1
 
-        if r.times < 1:
+        if r.times >= r.calledAtLeast:
             self.rules.pop(0)
 
         if r.type == rules.RequestRule.MATCHER:

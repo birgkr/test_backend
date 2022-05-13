@@ -6,6 +6,11 @@ class CommandMsg:
         self.uid = 0
         self.command = ""
 
+    def fromJson(self, jsonObj):
+        self.uid = jsonObj['UID']
+        self.command = jsonObj['COMMAND']
+
+
 class CommandRetStatus:
     def __init__(self):
         self.uid = 0
@@ -13,13 +18,25 @@ class CommandRetStatus:
         self.code = 0
         self.text = ""
 
+    def toJson(self):
+        return {
+            'UID': self.uid,
+            'COMMAND': self.command,
+            
+        }
+
 
 
 class CmdStartServer(CommandMsg):
     def __init__(self):
         super().__init__()
-        self.command = "START_SERVER"
         self.lport = 80
+
+    def fromJson(self, jsonObj):
+        super().fromJson(jsonObj)
+        self.lport = jsonObj['LPORT']
+
+
 
 class CmdStartServerStatus(CommandRetStatus):
     def __init__(self):

@@ -27,8 +27,8 @@ class TransportPDU:
     def __init__(self, request):
         self.MAGIC_BYTES = 0xA5B1
         
-        self.magic = int.from_bytes(request.recv(2), 'little')
-        self.dataSize = int.from_bytes(request.recv(4), 'little')
+        self.magic = int.from_bytes(request.recv(2), 'big')
+        self.dataSize = int.from_bytes(request.recv(4), 'big')
         self.data = request.recv(self.dataSize)
 
         self.cmdObj = json.loads(self.data)
@@ -178,7 +178,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             for m in ruleData['MATCHERS']:
                 rule.addMatcher(self.matcherFromJson(m))
             if 'TIMES' in ruleData:
-                rule.times = int(ruleData['TIMES'])
+                rule.calledAtLeast, rule.calledAtMost = self.timesFromJson(ruleData['CALLED_TIMES'])
             if 'RESPONSE' in ruleData:
                 rule.setResponse(self.responseFromJson(ruleData['RESPONSE']))
 
@@ -192,6 +192,11 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         matcher.negate = mData['NEGATE']
 
         return matcher
+
+
+    def timesFromJson(self, tData):
+        return tData['AT_LEAST'], tData['AT_MOST']
+       
 
     def responseFromJson(self, rData):
         resp = rules.Response()

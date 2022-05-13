@@ -22,8 +22,8 @@ class TestCommandProt(unittest.TestCase):
     def setUp(self):
       httpServer.reset()
 
-    def test_1(self):
-      httpServer.expect(Rule().url("banan").method("GET").header(testapi.exact("apa"), "bepa")
+    def getHeaderTest(self):
+      httpServer.expect(Rule().url("banan").method("GET").header(testapi.exact("apa"), "b.pa")
                               .times(1)
                               .respondWith(Response().code(200).data("Hello 1!")))
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
   cmdSrv = testapi.CmdServer()
   cmdSrv.connect()
-  httpServer = cmdSrv.startServer()
+  httpServer = cmdSrv.startTestServer()
   unittest.main(exit=False)
   httpServer.kill()
   

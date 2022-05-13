@@ -43,12 +43,11 @@ Listing the COMMAND_DATA section only...
 
 #### Start server
 ```
-
 Command
 {
     'LPORT': integer listening port
-    'PROTOCOL': either 'HTTP' or 'HTTPS'
     #TODO: add https support    
+    #'PROTOCOL': either 'HTTP' or 'HTTPS'
 }
 
 Response
@@ -57,16 +56,55 @@ Response
 }
 ```
 
-
-
 #### Reset server
+```
+Command
+{
+    'SERVER_ID': integer server id
+}
+
+Response
+{
+    
+}
+```
+
+
 
 #### Kill server
+```
+Command
+{
+    'SERVER_ID': integer server id
+}
+
+Response
+{
+    
+}
+```
 
 #### Fetch status
+```
+Command
+{
+    'SERVER_ID': integer server id
+}
+
+Response
+{
+        'allOk': True if all matchers for this request were met
+        'method': the request command e.g. 'GET', 'POST' or 'PUT'
+        'uri': the request uri
+        'headers': the request headers
+        'data': the request data
+        'neverReceived': true if this request never were received
+
+        failedExpects: [] # list of string messages describing wicth machers that were not met for this request
+}
+```
 
 #### Add rule
-
 ```
 {
     'SERVER_ID': id of the server
