@@ -4,6 +4,8 @@ import logging
 import http.server
 import threading
 import re
+import json
+
 
 import rules
 
@@ -22,6 +24,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.processRequest()
     
     def processRequest(self):
+        logger.debug(f"Request: {self.command} {self.path} from {self.client_address[0]}")
+
+
         # Validate the request
         resp = self.server.owner.validateRequest(self)
 
@@ -39,27 +44,69 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     
 
     def log_message(self, format, *args):
-        logger.debug(f"Request: {self.command} {self.path} from {self.client_address[0]}")
+        #logger.debug(f"Request: {self.command} {self.path} from {self.client_address[0]}")
+        pass
     
        
 
+class ExpectStatus:
+    def __init__(self):
+        self.requestUri = ''
+        self.requestMethod = ''
+
+        self.isRoot = False
+        self.isCollection = False
+        self.collectionType = -1
+        self.fails = []
+        self.children = []
+        self.unmatchedRules = False
+
+    def toJson(self):
+        if self.isRoot:
+            esObj = { 'REQUEST_INFO': { 'URI': self.requestUri, 'METHOD': self.requestMethod } }
+            #esObj['ALL_OK'] = (len(self.children) + len(self.fails) == 0)
+            esObj['UNMATCHED_RULES'] = self.unmatchedRules
+
+            if len(self.children)>0:
+                esObj['EXPECTED'] = [ x.toJson() for x in self.children ]
+
+            return esObj
 
 
-class RequestsStatus:
-    def __init__(self, method, uri, headers, data=None):
-        self.allOk = True
-        self.method = method
-        self.uri =  uri
-        self.headers = headers
-        self.data = data
-        self.neverReceived = False
+        elif self.isCollection:
+            typeStr = {}
+            typeStr[rules.RequestRule.ALL_IN_ORDER] = "ALL_IN_ORDER"
+            typeStr[rules.RequestRule.ALL_IN_ANY_ORDER] = "ALL_IN_ANY_ORDER"
+            typeStr[rules.RequestRule.ANY_NUM] = "ANY_NUM"
 
-        self.failedExpects = []
+            return { 
+                     'COLLECTION_TYPE': typeStr[self.collectionType],
+                     'COLLECTION': [ x.toJson() for x in self.children ]
+                   }
+        else:
+            return { 'RULE': self.fails }
 
-    def addFail(self, text):
-        self.allOk = False
-        self.failedExpects.append(text)
+    def setRequestInfo(self, uri, method):
+        self.requestUri = uri
+        self.requestMethod = method
 
+    def addChild(self, child):
+        self.children.append(child)
+        self.isCollection = True
+
+    def addRuleFail(self, failStr):
+        self.fails.append(failStr)
+
+    def addExpectedRequestFail(self, failStr):
+        self.neverReceived = True
+        self.addRuleFail(failStr)
+
+    def setIsRoot(self, isRoot):
+        self.isRoot = isRoot
+
+    def setCollectionType(self, collectionType):
+        self.collectionType = collectionType
+        self.isCollection = True
 
 
 class TestServer:
@@ -68,8 +115,12 @@ class TestServer:
         self.port = port
         self.ifAddr = ifAddr
         self.server = None
-        self.rules = [] # List of objects of type rules.RequestRule
         self.status = [] # List of validation status (one for each expectation rule plus one for each request that was received but not expected)
+
+        self.topRule = rules.RequestRule()
+        self.topRule.type = rules.RequestRule.COLLECTION
+        self.topRule.collectionType = rules.RequestRule.ALL_IN_ORDER
+
 
 
     def serverRun(self):
@@ -100,57 +151,79 @@ class TestServer:
 
     def addRule(self, rule):
         logger.debug(f"Adding rule to server '{self.id}'")
-        self.rules.append(rule)
+        self.topRule.rules.append(rule)
 
     def getStatus(self):
         logger.debug(f"Get status of server '{self.id}'")
 
-        if len(self.rules)>0:
+        if not self.topRule.passed:
+            # the top rule is not validated ok, so we have unmet rules...
+            #TODO: traverse all rules in the tree and report all expectations that wasn't met
+            es = ExpectStatus()
+            es.setIsRoot(True)
+            es.addExpectedRequestFail("Expected request...")
+            es.unmatchedRules = True
+            self.status.append(es)            
 
-            for r in self.rules:
-                rs = RequestsStatus('', '', {})
-                rs.addFail(f"Expected request")
-                rs.neverReceived = True
-                self.status.append(rs)            
-        
-        stat = self.status
-        return stat
-
+        return [x.toJson() for x in self.status]
 
     def validateRequest(self, request):
-        #TODO: collections
-
-        # Check if expecting any requests...
-        rs = RequestsStatus(request.command, request.path, [{'KEY':k, 'VALUE':v} for k,v in request.headers.items() ])
-        if len(self.rules) == 0:
-            rs.addFail("No request expected, but received one...")
-            self.status.append( rs ) 
+        # First check if expecting any requests at all...
+        #rs = RequestsStatus(request.command, request.path, [{'KEY':k, 'VALUE':v} for k,v in request.headers.items() ])
+        
+        expectStatus = ExpectStatus()
+        expectStatus.setRequestInfo(request.command, request.path)
+        expectStatus.setIsRoot(True)
+   
+        if self.topRule.done:
+            # Request receved, but no rules left to match...
+            msg = "No request expected, but received one..."
+            logger.debug(msg)
+            es = ExpectStatus()
+            es.addRuleFail(msg)
+            expectStatus.addChild(es)
+            self.status.append( expectStatus ) 
+            #print(json.dumps(expectStatus.toJson(), indent=2))
             return rules.Response(400)
 
-        # We still expect requests, so validate this one...
+   
+        resp = self.validateRule(request, self.topRule, expectStatus)
+        #print(json.dumps(expectStatus.toJson(), indent=2))
 
-        # Get the rule in question...
-        r = self.rules[0]
-        r.times += 1
+        if resp is None:
+            logger.debug("Failed to match request against any rule...")
+            self.status.append( expectStatus ) 
+            return rules.Response(400)
+        return resp
 
-        if r.times >= r.calledAtLeast:
-            self.rules.pop(0)
+        
 
-        if r.type == rules.RequestRule.MATCHER:
-            allOk = True
-            #TODO: add report info of the missing matches
-            for m in r.matchers:
+    def validateRule(self, request, rule, expectStatus):
+        if rule.type == rules.RequestRule.MATCHER:
+            logger.debug(f"Testing rule...\n{rule.toStr()}")
+            
+            es = ExpectStatus()
+
+            allMatch = True
+
+            # Check all matchers for this rule
+            for m in rule.matchers:
                 if m.type == rules.Matcher.METHOD:
                     o = re.search(m.matchValue, request.command)
                     if not o:
-                        allOk = False
-                        rs.addFail(f"Expected command matching '{m.matchValue}', but got '{request.command}'...")
+                        allMatch = False
+
+                        msg = f"Expected command matching '{m.matchValue}', but got '{request.command}'..."
+                        logger.debug(msg)
+                        es.addRuleFail(msg)
 
                 elif m.type == rules.Matcher.URL:
                     o = re.search(m.matchValue, request.path)
                     if not o:
-                        allOk = False
-                        rs.addFail(f"Expected URI matching '{m.matchValue}', but got '{request.path}'...")
+                        allMatch = False
+                        msg = f"Expected URI matching '{m.matchValue}', but got '{request.path}'..."
+                        logger.debug(msg)
+                        es.addRuleFail(msg)
 
                 elif m.type == rules.Matcher.HEADER:
                     matchFound = False
@@ -162,20 +235,101 @@ class TestServer:
                                 matchFound = True
                                 break                            
                     if not matchFound:
-                        allOk = False
-                        rs.addFail(f"Expected a header key matching '{m.matchValue[0]}' with value matching '{m.matchValue[1]}', but found none...")
+                        allMatch = False
+                        msg = f"Expected a header key matching '{m.matchValue[0]}' with value matching '{m.matchValue[1]}', but found none..."
+                        logger.debug(msg)
+                        es.addRuleFail(msg)
 
                 elif m.type == rules.Matcher.DATA:
                     # TODO: read data and search
                     pass
-            
-            self.status.append( rs )            
-            if allOk:
-                return r.response
-            else:
-                return rules.Response(400)
+                elif m.type == rules.Matcher.FILE_DATA:
+                    # TODO: read file data and search
+                    pass
 
-    
+            if not allMatch:
+                logger.debug("Request does not match rule")
+                expectStatus.addChild(es)
+            else:
+                # Rule is matching the request
+                rule.times += 1
+
+                if rule.times >= rule.calledAtLeast:
+                    rule.passed = True
+
+                if rule.times == rule.calledAtMost:
+                    rule.done = True
+
+                logger.debug("Request matches rule")
+                logger.debug(f"   times: {rule.times}, at least: {rule.calledAtLeast}, at most: {rule.calledAtMost}")
+                logger.debug(f"   passed: {rule.passed}, done: {rule.done}")
+
+                # It shouldn't be possible to validate the rule more than 'calledAtMost' 
+                # since it would be flagged as done and not validated against...
+                # So, we don't test for that here
+                return rule.response
+                
+                
+
+
+        elif rule.type == rules.RequestRule.COLLECTION:
+            if rule.collectionType == rules.RequestRule.ALL_IN_ORDER:
+                # find first rule not yet validated
+                rulesToTest = [r for r in rule.rules if not r.done]
+                if len(rulesToTest)>0:
+                    logger.debug("Testing rules in collection ALL_IN_ORDER")
+                    for r in rulesToTest:
+                        #r = rulesToTest[ri]
+                        es = ExpectStatus()
+                        es.setCollectionType(rule.collectionType)
+                        resp = self.validateRule(request, r, es)
+                        
+                        if resp is None:
+                            if r.passed:
+                                # The tested rule did not validate, but it might be ok since it already tested ok... (typically with atLeast matching)
+                                # Set it to done and continue testing with next rule in line
+                                logger.debug(f"Tested rule did not validate, but might be ok since it already tested ok. Test next rule..")
+                                #r.done = True
+                            else:
+                                # The tested rule shall validate, but did not...
+                                expectStatus.addChild(es)
+                                return None
+                        else:
+                            if len(rulesToTest) == 1:
+                                # this was the last rule and it were validated ok, so copy the status to the collection
+                                rule.passed = r.passed
+                                rule.done = r.done
+                            # rule validated, so pass on the response
+                            return resp
+                    return None
+            
+            if rule.collectionType == rules.RequestRule.ALL_IN_ANY_ORDER:
+                es = ExpectStatus()
+                es.setCollectionType(rule.collectionType)
+
+                # fetch all rules that has not been met
+                rulesToTest = [r for r in rule.rules if not r.done]
+                if len(rulesToTest)>0:
+                    logger.debug("Testing rules in collection ALL_IN_ANY_ORDER")
+
+                for r in rulesToTest:
+                    resp = self.validateRule(request, r, es)
+                    if resp is not None:
+                        if len(rulesToTest) == len([x for x in rulesToTest if x.passed]):
+                            # all rules in sequence marked as passed so mark sequence passed as well
+                            rule.passed = r.passed
+                        if len(rulesToTest) == len([x for x in rulesToTest if x.done]):
+                            # all rules in sequence marked as done so mark sequence done as well
+                            rule.done = r.done
+                        return resp
+                # No rule in the collection rule tree matched the request
+                expectStatus.addChild(es)
+                return None
+
+            if rule.collectionType == rules.RequestRule.ANY_NUM:
+                pass
+
+        return None    
 
 
 if __name__ == "__main__":

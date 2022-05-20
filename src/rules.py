@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 class Matcher:
     URL = "URL"
     METHOD = "METHOD"
@@ -21,13 +22,15 @@ class Response:
         self.headers = headers
         self.data = data
 
-    def __str__(self):
-        ret = f"Status code: {self.code}\n"
-        ret += "- Headers -\n"
+    def toStr(self, tab=0, tabSize=2):
+        indent = " " * tabSize * tab
+        indent2 = indent + " " * tabSize
+        ret = f"{indent}Status code: {self.code}\n"
+        ret += f"{indent}- Headers -\n"
         for k in self.headers:
-            ret += f"{k}: {self.headers[k]}\n"
-        ret += "-----\n"
-        ret += f"Data: '{self.data}'\n"
+            ret += f"{indent2}{k}: {self.headers[k]}\n"
+        ret += f"{indent2}-----\n"
+        ret += f"{indent}Data: '{self.data}'\n"
         return ret
 
 
@@ -37,37 +40,55 @@ class RequestRule:
 
     ALL_IN_ORDER = 0
     ALL_IN_ANY_ORDER = 1
-    ONE_OF = 2
+    ANY_NUM = 2
 
     def __init__(self):
         self.type = None
+        self.times = 0          # How many times this rule has been matched
+        self.passed = False     # Set to true if this rule is fullfilled (e.g. called "at least" times, but not yet to many)
+        self.falied = False     # Set to true if this rule failed (e.g. called more times than specified)
+        self.done = False       # Set to true when this rule is fully tested and may not be used any more
+
+        # Collection specifics
+        self.collectionType = None
+        self.anyNum = 1
+        self.rules = []
+
+        # Matching specifics
         self.matchers = []
         self.calledAtLeast = 0
         self.calledAtMost = 0
         self.response = None
 
-        self.times = 0
 
     def __str__(self):
         return self.toStr(tab=0, tabSize=2)
 
-    def toStr(self, tab, tabSize):
+    def toStr(self, tab=0, tabSize=2):
         indent = " " * tabSize * tab
         indent2 = indent + " " * tabSize
         if self.type == RequestRule.MATCHER:
-            retStr = "== Rule ==\n"
-            retStr += f"Times: {self.times}\n"
+            retStr = f"{indent}== Rule ==\n"
+            retStr += f"{indent}Called at least: {self.calledAtLeast}\n"
+            retStr += f"{indent}Called at most: {self.calledAtMost}\n"
             retStr += f"{indent}Matchers...\n"
             for m in self.matchers:
                 retStr += f"{indent2}{str(m)}\n"
 
             retStr += f"{indent}Response...\n"
-            retStr += f"{indent2}{str(self.response)}\n"
-            
-            return retStr
+            retStr += f"{indent}{self.response.toStr(tab+1, tabSize)}\n"
+           
         elif self.type == RequestRule.COLLECTION:
-            return "COLLECTION"
-        return "None"
+            retStr = f"{indent}== Collection ==\n"
+            typeStrs = ['ALL_IN_ORDER', 'ALL_IN_ANY_ORDER', 'ANY_NUM']
+            retStr += f"{indent}Collection type: {typeStrs[self.collectionType]}\n"
+            retStr += f"{indent}Times: {self.times}\n"
+            if self.collectionType == RequestRule.ANY_NUM:
+                retStr += f"{indent}Any num: {self.anyNum}\n"
+            for r in self.rules:
+                retStr += f"{indent}{r.toStr(tab+1, tabSize)}\n"
+            
+        return retStr
 
     def addMatcher(self, matcher):
         self.matchers.append(matcher)

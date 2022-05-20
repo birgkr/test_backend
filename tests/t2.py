@@ -10,7 +10,7 @@ import json
 sys.path.append('../src')
 
 import testapi
-from testapi import Rule, Response
+from testapi import Rule, Response, Collection
 
 
 import unittest
@@ -22,28 +22,52 @@ class TestCommandProt(unittest.TestCase):
     def setUp(self):
       httpServer.reset()
 
-    def getHeaderTest(self):
+    def NN_test_getHeaderTest(self):
       httpServer.expect(Rule().url("banan").method("GET").header(testapi.exact("apa"), "b.pa")
-                              .times(1)
+                              .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello 1!")))
-
       r = requests.get(url = "http://localhost:8090/banan", headers = {"apa": "bepa"})
 
       self.assertTrue(*httpServer.checkStatus())
 
 
-    def test_2(self):
+    def NN_test_2(self):
       httpServer.expect(Rule().url("apa")
-                              .times(1)
+                              .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
       
       httpServer.expect(Rule().url("bepa")
-                              .times(1)
+                              .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
 
 
       r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
       r = requests.get(url = "http://localhost:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
+
+
+      self.assertTrue(*httpServer.checkStatus())
+
+    def test_collection(self):
+      col = Collection()
+      col.expectAllInAnyOrder()
+      col.addRule(Rule().url("apa")
+                              .matchAtLeast(1).matchAtMost(2)
+                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+      col.addRule(Rule().url("bepa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+      col.addRule(Rule().url("depa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+
+      httpServer.expect(col)
+
+      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/cepa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
 
 
       self.assertTrue(*httpServer.checkStatus())

@@ -156,6 +156,10 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         logger.debug(f"Adding rule to server with id '{serverId}'")
         rule = self.ruleFromJson(cmdData['RULE'])
 
+        print(json.dumps(cmdData,indent=2))
+
+        print(str(rule))
+
         global testServers
         testServers[serverId].addRule(rule)
         return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Added rule')
@@ -173,14 +177,28 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
     def ruleFromJson(self, ruleData):
         rule = rules.RequestRule()
 
+        #print(json.dumps(ruleData, indent=2))
+
         if ruleData['TYPE'] == 'MATCHER':
             rule.type = rules.RequestRule.MATCHER
             for m in ruleData['MATCHERS']:
                 rule.addMatcher(self.matcherFromJson(m))
-            if 'TIMES' in ruleData:
+            if 'CALLED_TIMES' in ruleData:
                 rule.calledAtLeast, rule.calledAtMost = self.timesFromJson(ruleData['CALLED_TIMES'])
+                if rule.calledAtLeast == 0:
+                    rule.passed = True
             if 'RESPONSE' in ruleData:
                 rule.setResponse(self.responseFromJson(ruleData['RESPONSE']))
+
+        elif ruleData['TYPE'] == 'COLLECTION':
+            rule.type = rules.RequestRule.COLLECTION
+            rule.collectionType = self.collectionTypeFromJson(ruleData['COLLECTION_TYPE'])
+            rule.times = ruleData['CALLED_TIMES']
+            if rule.collectionType == rules.RequestRule.ANY_NUM:
+                rule.anyNum = ruleData['ANY_NUMBER']
+            
+            for r in ruleData['RULES']:
+                rule.rules.append(self.ruleFromJson(r))
 
         return rule
 
@@ -195,7 +213,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
 
     def timesFromJson(self, tData):
-        return tData['AT_LEAST'], tData['AT_MOST']
+        return (tData['AT_LEAST'], tData['AT_MOST'])
        
 
     def responseFromJson(self, rData):
@@ -207,6 +225,15 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             resp.data = rData['DATA']
         return resp
 
+    def collectionTypeFromJson(self, data):
+        if data == "ALL_IN_ORDER":
+            return rules.RequestRule.ALL_IN_ORDER
+        elif data == "ALL_IN_ANY_ORDER":
+            return rules.RequestRule.ALL_IN_ANY_ORDER
+        elif data == "ANY_NUMBER":
+            return rules.RequestRule.ANY_NUM
+        else:
+            return None
 
 class CommandServer():
     def __init__(self, host="localhost", port=8070):

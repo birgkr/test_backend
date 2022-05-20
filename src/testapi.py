@@ -77,30 +77,48 @@ class HttpServer:
         allStatus = self.fetchStatus()['COMMAND_DATA']
         #print(json.dumps(allStatus, indent=2))
 
-        allOk = True
-        msg = "\n"
+        msgLines = ['']
         for stat in allStatus:
-            if not stat['ALLOK']:
-                allOk = False
-                if stat['NEVERRECEIVED']:
-                    msg += f"Expected request...\n"
-                else:
-                    msg += f"For the request '{stat['METHOD']} {stat['URI']}'\n"
-                    for e in stat['FAILEDEXPECTS']:
-                        msg += "  " + e + "\n"
-                    msg += "\n"
-
-        return allOk, msg
-
-
-    def expect(self, rule):
-        jsonData = { 'COMMAND': 'ADD_RULE',
-                     'COMMAND_DATA': { 'SERVER_ID': self.id, 'RULE': rule.toJson() }  }
-        resp = self.cmdSrv.sendCommand(jsonData)
+            if 'UNMATCHED_RULES' in stat and stat['UNMATCHED_RULES']:
+                msgLines.append( "Expected more request(s)...")
+            if 'EXPECTED' in stat:
+                if "REQUEST_INFO" in stat:
+                    msgLines.append(f"Tried match the request '{stat['REQUEST_INFO']['METHOD']} {stat['REQUEST_INFO']['URI']}'...")
+                for e in stat['EXPECTED']:
+                    self.createExpectMessage(e, msgLines)
+            msgLines.append("=====")
         
+        return len(msgLines)==0, '\n'.join(msgLines)
 
 
+    def createExpectMessage(self, sObj, msgLines, tab=0, tabSize=2):
+        indent = " " * tabSize * tab
+        if 'COLLECTION_TYPE' in sObj:
+            if sObj['COLLECTION_TYPE'] == 'ALL_IN_ORDER':
+                #msgLines.append(f"{indent}ALL_IN_ORDER")
+                for c in sObj['COLLECTION']:
+                    self.createExpectMessage(c, msgLines, tab+1, tabSize)
+            elif sObj['COLLECTION_TYPE'] == 'ALL_IN_ANY_ORDER':
+                #msgLines.append(f"{indent}ALL_IN_ANY_ORDER")
+                self.createExpectMessage(sObj['COLLECTION'][0], msgLines, tab+1, tabSize)
+                for c in sObj['COLLECTION'][1:]:
+                    msgLines.append(f"{indent}== OR ==")
+                    self.createExpectMessage(c, msgLines, tab+1, tabSize)
+            else:
+                raise Exception("Not implemented")
+        else:        
+            #print(sObj)
+            for m in sObj['RULE']:
+                msgLines.append(f"{indent}{m}")
 
+
+    def expect(self, ruleOrCollection):
+        jsonData = { 'COMMAND': 'ADD_RULE',
+                    'COMMAND_DATA': { 'SERVER_ID': self.id, 'RULE': ruleOrCollection.toJson() }  }
+        resp = self.cmdSrv.sendCommand(jsonData)
+
+
+        
 class Response:
     def __init__(self):
         self.statusCode = 200
@@ -172,10 +190,10 @@ class Rule:
         return self
 
     def matchAtMost(self, t):
-        self.calledAtLeast = t
+        self.calledAtMost = t
         return self
 
-    def matchTimesBetween(self, t1, t2):
+    def matchTimesRange(self, t1, t2):
         self.calledAtLeast = t1
         self.calledAtMost = t2
         return self
@@ -214,6 +232,49 @@ class Rule:
 
     def respondWith(self, r):
         self.response = r
+        return self
+
+
+class Collection:
+    ALL_IN_ORDER = "ALL_IN_ORDER"
+    ALL_IN_ANY_ORDER = "ALL_IN_ANY_ORDER"
+    ANY_NUMBER = "ANY_NUMBER"
+
+    def __init__(self):
+        self.type = Collection.ALL_IN_ORDER
+        self.times = 1 
+        self.anyNum = 1
+        self.rules = []
+
+    def toJson(self):
+        jsonObj = {
+            'TYPE': 'COLLECTION',
+            'COLLECTION_TYPE': self.type,
+            'CALLED_TIMES': self.times,
+            'RULES': [ r.toJson() for r in self.rules]
+            }
+
+        if self.type == Collection.ANY_NUMBER:
+            jsonObj['ANY_NUMBER'] = self.anyNum
+
+        return jsonObj
+
+
+    def expectAllInOrder(self):
+        self.type = Collection.ALL_IN_ORDER
+        return self
+
+    def expectAllInAnyOrder(self):
+        self.type = Collection.ALL_IN_ANY_ORDER
+        return self
+
+    def expectAnyNumber(self, num):
+        self.type = Collection.ANY_NUMBER
+        self.anyNum = num
+        return self
+    
+    def addRule(self, rule):
+        self.rules.append(rule)
         return self
 
    
