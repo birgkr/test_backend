@@ -23,12 +23,13 @@ class TestCommandProt(unittest.TestCase):
       httpServer.reset()
 
     def NN_test_getHeaderTest(self):
-      httpServer.expect(Rule().url("banan").method("GET").header(testapi.exact("apa"), "b.pa")
+      httpServer.expect(Rule().url("banan").method("GET").header(testapi.exactMatch("apa"), "b.pa")
                               .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello 1!")))
       r = requests.get(url = "http://localhost:8090/banan", headers = {"apa": "bepa"})
 
       self.assertTrue(*httpServer.checkStatus())
+
 
 
     def NN_test_2(self):
@@ -56,18 +57,18 @@ class TestCommandProt(unittest.TestCase):
       col.addRule(Rule().url("bepa")
                               .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
-      col.addRule(Rule().url("depa")
+      col.addRule(Rule().url("cepa")
                               .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
 
       httpServer.expect(col)
 
-      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://localhost:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://localhost:8090/cepa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://localhost:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://127.0.0.1:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://127.0.0.1:8090/cepa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
+      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
 
 
       self.assertTrue(*httpServer.checkStatus())

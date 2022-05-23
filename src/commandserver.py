@@ -11,7 +11,6 @@ import logging
 import socketserver
 import json
 
-import commands
 import testserver
 import rules
 import testapi
@@ -61,8 +60,11 @@ class CmdRetStatus:
 
 
 class CommandRequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
+    """Request handles for all incoming control commands."""
 
+    def handle(self):
+        """Called when a new chunk of TCP data has been received. Does some validation, parse the data and send a response back to the client."""
+        
         # Fetch and execute all incomming commands
         magic = self.request.recv(1)
         while len(magic) == 1:
@@ -95,6 +97,8 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
 
     def parseCmd(self, cmd):
+        """Parses the command data"""
+        
         # Initialise base return status message
         retObj = CmdRetStatus(code=CmdRetStatus.STAT_INVALID_CMD, text='Unknown command: {}'.format(cmd['COMMAND']))
 
@@ -236,10 +240,13 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             return None
 
 class CommandServer():
-    def __init__(self, host="localhost", port=8070):
-        logger.info(f"Starting command server at'{host}:{port}'")
+    """The CommandServer handles all controls commands sent from the client-side test framework."""
+    
+    def __init__(self, host="0.0.0.0", port=8070):
+        """Creates and starts a command server."""
+        logger.info(f"Starting command server at '{host}:{port}'")
         socketserver.TCPServer.allow_reuse_address = True
-        self.srv = socketserver.TCPServer(("0.0.0.0", port), CommandRequestHandler)
+        self.srv = socketserver.TCPServer((host, port), CommandRequestHandler)
         self.srv.serve_forever()
 
 if __name__ == "__main__":

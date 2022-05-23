@@ -15,7 +15,7 @@ def upperKey(inParam):
     else:
         return inParam
 
-def exact(s):
+def exactMatch(s):
     return f"^{s}$"
 
 class CmdServer:
@@ -88,7 +88,7 @@ class HttpServer:
                     self.createExpectMessage(e, msgLines)
             msgLines.append("=====")
         
-        return len(msgLines)==0, '\n'.join(msgLines)
+        return len(allStatus)==0, '\n'.join(msgLines)
 
 
     def createExpectMessage(self, sObj, msgLines, tab=0, tabSize=2):
