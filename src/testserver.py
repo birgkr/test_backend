@@ -139,7 +139,10 @@ class TestServer:
 
     def reset(self):
         logger.debug(f"Resetting test server '{self.id}'")
-        self.rules = []
+        self.topRule = rules.RequestRule()
+        self.topRule.type = rules.RequestRule.COLLECTION
+        self.topRule.collectionType = rules.RequestRule.ALL_IN_ORDER
+
         self.status = []
 
     def stop(self):
@@ -200,7 +203,7 @@ class TestServer:
 
     def validateRule(self, request, rule, expectStatus):
         if rule.type == rules.RequestRule.MATCHER:
-            logger.debug(f"Testing rule...\n{rule.toStr()}")
+            #logger.debug(f"Testing rule...\n{rule.toStr()}")
             
             es = ExpectStatus()
 

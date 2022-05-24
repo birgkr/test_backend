@@ -78,7 +78,6 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             
             #TODO: Handle ill formed data (eg. non JSON)
             cmdObj = json.loads(msgData)
-
             # Parse the command
             retObj = self.parseCmd(cmdObj)
             
@@ -160,9 +159,8 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         logger.debug(f"Adding rule to server with id '{serverId}'")
         rule = self.ruleFromJson(cmdData['RULE'])
 
-        print(json.dumps(cmdData,indent=2))
-
-        print(str(rule))
+        #print(json.dumps(cmdData,indent=2))
+        #print(str(rule))
 
         global testServers
         testServers[serverId].addRule(rule)
