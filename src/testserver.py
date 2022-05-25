@@ -86,7 +86,7 @@ class ExpectStatus:
         else:
             return { 'RULE': self.fails }
 
-    def setRequestInfo(self, uri, method):
+    def setRequestInfo(self, method, uri):
         self.requestUri = uri
         self.requestMethod = method
 
@@ -154,6 +154,7 @@ class TestServer:
 
     def addRule(self, rule):
         logger.debug(f"Adding rule to server '{self.id}'")
+        self.topRule.done = False
         self.topRule.rules.append(rule)
 
     def getStatus(self):

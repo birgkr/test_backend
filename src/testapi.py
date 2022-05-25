@@ -120,10 +120,10 @@ class HttpServer:
 
         
 class Response:
-    def __init__(self):
-        self.statusCode = 200
-        self.respHeaders = None
-        self.respData = None
+    def __init__(self, respData="", statusCode=200):
+        self.statusCode = statusCode
+        self.respHeaders = {}
+        self.respData = respData
 
     def toJson(self):
         retObj = {'CODE': self.statusCode}
@@ -169,7 +169,7 @@ class Rule:
     def __init__(self):
         self.matchers = []
         self.calledAtLeast = 1
-        self.calledAtMost = 1
+        self.calledAtMost = 100000
         self.response = None
 
     def toJson(self):
