@@ -154,13 +154,13 @@ class TestServer:
 
     def addRule(self, rule):
         logger.debug(f"Adding rule to server '{self.id}'")
-        self.topRule.done = False
+        self.topRule.state = rules.RequestRule.NOT_IN_USE
         self.topRule.rules.append(rule)
 
     def getStatus(self):
         logger.debug(f"Get status of server '{self.id}'")
 
-        if not self.topRule.passed:
+        if self.topRule.state < rules.RequestRule.PASSED:
             # the top rule is not validated ok, so we have unmet rules...
             #TODO: traverse all rules in the tree and report all expectations that wasn't met
             es = ExpectStatus()
@@ -173,13 +173,11 @@ class TestServer:
 
     def validateRequest(self, request):
         # First check if expecting any requests at all...
-        #rs = RequestsStatus(request.command, request.path, [{'KEY':k, 'VALUE':v} for k,v in request.headers.items() ])
-        
         expectStatus = ExpectStatus()
         expectStatus.setRequestInfo(request.command, request.path)
         expectStatus.setIsRoot(True)
    
-        if self.topRule.done:
+        if self.topRule.state == rules.RequestRule.DONE:
             # Request receved, but no rules left to match...
             msg = "No request expected, but received one..."
             logger.debug(msg)
@@ -257,16 +255,18 @@ class TestServer:
             else:
                 # Rule is matching the request
                 rule.times += 1
+                rule.state = rules.RequestRule.IN_USE
 
                 if rule.times >= rule.calledAtLeast:
-                    rule.passed = True
+                    rule.state = rules.RequestRule.PASSED
 
                 if rule.times == rule.calledAtMost:
-                    rule.done = True
+                    rule.state = rules.RequestRule.DONE
+
 
                 logger.debug("Request matches rule")
                 logger.debug(f"   times: {rule.times}, at least: {rule.calledAtLeast}, at most: {rule.calledAtMost}")
-                logger.debug(f"   passed: {rule.passed}, done: {rule.done}")
+                logger.debug(f"   state: {rule.state}")
 
                 # It shouldn't be possible to validate the rule more than 'calledAtMost' 
                 # since it would be flagged as done and not validated against...
@@ -279,30 +279,32 @@ class TestServer:
         elif rule.type == rules.RequestRule.COLLECTION:
             if rule.collectionType == rules.RequestRule.ALL_IN_ORDER:
                 # find first rule not yet validated
-                rulesToTest = [r for r in rule.rules if not r.done]
+                rulesToTest = [r for r in rule.rules if r.state < rules.RequestRule.DONE]
                 if len(rulesToTest)>0:
-                    logger.debug("Testing rules in collection ALL_IN_ORDER")
+                    logger.debug("Testing rules in collection ALL_IN_ORDER {}".format("(top rule)" if rule is self.topRule else ""))
                     for r in rulesToTest:
-                        #r = rulesToTest[ri]
                         es = ExpectStatus()
                         es.setCollectionType(rule.collectionType)
                         resp = self.validateRule(request, r, es)
                         
                         if resp is None:
-                            if r.passed:
+                            if r.state >= rules.RequestRule.PASSED:
                                 # The tested rule did not validate, but it might be ok since it already tested ok... (typically with atLeast matching)
                                 # Set it to done and continue testing with next rule in line
                                 logger.debug(f"Tested rule did not validate, but might be ok since it already tested ok. Test next rule..")
-                                #r.done = True
                             else:
                                 # The tested rule shall validate, but did not...
+                                logger.debug("The tested was expected to validate, but did not...")
                                 expectStatus.addChild(es)
                                 return None
                         else:
-                            if len(rulesToTest) == 1:
-                                # this was the last rule and it were validated ok, so copy the status to the collection
-                                rule.passed = r.passed
-                                rule.done = r.done
+                            if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.PASSED]):
+                                # all rules in sequence marked as passed so mark sequence passed as well
+                                rule.state = rules.RequestRule.PASSED
+                            if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.DONE]):
+                                # all rules in sequence marked as done so mark sequence done as well
+                                rule.state = rules.RequestRule.DONE 
+
                             # rule validated, so pass on the response
                             return resp
                     return None
@@ -312,26 +314,56 @@ class TestServer:
                 es.setCollectionType(rule.collectionType)
 
                 # fetch all rules that has not been met
-                rulesToTest = [r for r in rule.rules if not r.done]
+                rulesToTest = [r for r in rule.rules if r.state < rules.RequestRule.DONE]
                 if len(rulesToTest)>0:
                     logger.debug("Testing rules in collection ALL_IN_ANY_ORDER")
 
                 for r in rulesToTest:
                     resp = self.validateRule(request, r, es)
                     if resp is not None:
-                        if len(rulesToTest) == len([x for x in rulesToTest if x.passed]):
+                        if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.PASSED]):
                             # all rules in sequence marked as passed so mark sequence passed as well
-                            rule.passed = r.passed
-                        if len(rulesToTest) == len([x for x in rulesToTest if x.done]):
+                            rule.state = rules.RequestRule.PASSED
+                        if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.DONE]):
                             # all rules in sequence marked as done so mark sequence done as well
-                            rule.done = r.done
+                            rule.state = rules.RequestRule.DONE 
                         return resp
                 # No rule in the collection rule tree matched the request
                 expectStatus.addChild(es)
                 return None
 
             if rule.collectionType == rules.RequestRule.ANY_NUM:
-                pass
+                es = ExpectStatus()
+                es.setCollectionType(rule.collectionType)
+
+                # fetch rules that is done
+                rulesDone = [r for r in rule.rules if r.state == rules.RequestRule.DONE]
+                # fetch all rules that has been successfully validated against
+                rulesToTest = [r for r in rule.rules if r.state == rules.RequestRule.IN_USE or r.state == rules.RequestRule.PASSED]
+
+                # Test if already started rules max out the collection max
+                if len(rulesToTest) + len(rulesDone) < rule.maxNum:
+                    # not maxed out so fetch all rules that are not done
+                    rulesToTest = [r for r in rule.rules if r.state < rules.RequestRule.DONE]
+                
+                if len(rulesToTest)>0:
+                    logger.debug(f"Testing rules in collection ANY_NUM, max: {rule.maxNum}, left: {len(rulesToTest)}")
+
+                for r in rulesToTest:
+                    resp = self.validateRule(request, r, es)
+                    if resp is not None:
+                        rule.times += 1
+                        if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.PASSED]):
+                            # all rules in sequence marked as passed so mark sequence passed as well
+                            rule.state = rules.RequestRule.PASSED
+                        if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.DONE]):
+                            # all rules in sequence marked as done so mark sequence done as well
+                            rule.state = rules.RequestRule.DONE 
+                        return resp
+                # No rule in the collection rule tree matched the request
+                expectStatus.addChild(es)
+                return None
+
 
         return None    
 

@@ -99,7 +99,13 @@ class HttpServer:
                 for c in sObj['COLLECTION']:
                     self.createExpectMessage(c, msgLines, tab+1, tabSize)
             elif sObj['COLLECTION_TYPE'] == 'ALL_IN_ANY_ORDER':
-                #msgLines.append(f"{indent}ALL_IN_ANY_ORDER")
+                msgLines.append(f"{indent}== ALL_IN_ANY_ORDER collection ==")
+                self.createExpectMessage(sObj['COLLECTION'][0], msgLines, tab+1, tabSize)
+                for c in sObj['COLLECTION'][1:]:
+                    msgLines.append(f"{indent}== OR ==")
+                    self.createExpectMessage(c, msgLines, tab+1, tabSize)
+            elif sObj['COLLECTION_TYPE'] == 'ANY_NUM':
+                msgLines.append(f"{indent}== ANY_NUM collection ==")
                 self.createExpectMessage(sObj['COLLECTION'][0], msgLines, tab+1, tabSize)
                 for c in sObj['COLLECTION'][1:]:
                     msgLines.append(f"{indent}== OR ==")
@@ -243,7 +249,7 @@ class Collection:
     def __init__(self):
         self.type = Collection.ALL_IN_ORDER
         self.times = 1 
-        self.anyNum = 1
+        self.maxNum = 1
         self.rules = []
 
     def toJson(self):
@@ -255,7 +261,7 @@ class Collection:
             }
 
         if self.type == Collection.ANY_NUMBER:
-            jsonObj['ANY_NUMBER'] = self.anyNum
+            jsonObj['MAX_NUMBER'] = self.maxNum
 
         return jsonObj
 
@@ -270,7 +276,7 @@ class Collection:
 
     def expectAnyNumber(self, num):
         self.type = Collection.ANY_NUMBER
-        self.anyNum = num
+        self.maxNum = num
         return self
     
     def addRule(self, rule):

@@ -18,51 +18,157 @@ import unittest
 commandServer = None
 httpServer = None
 
-class TestCommandProt(unittest.TestCase):
+class TestSuite(unittest.TestCase):
     def setUp(self):
       httpServer.reset()
 
-    def test_2(self):
-      httpServer.expect(Rule().url("apa")
+    def test_collectionInOrderPos(self):
+      col = Collection()
+      col.addRule(Rule().url("apa")
+                              .matchTimes(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("bepa")
                               .matchTimes(1)
-                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
-      
-      httpServer.expect(Rule().url("bepa")
-                              .matchTimes(1)
-                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+                              .respondWith(Response().code(200).data("Hello!")))
 
+      httpServer.expect(col)
 
-      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://127.0.0.1:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
-
-
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/bepa")
       self.assertTrue(*httpServer.checkStatus())
 
-    def test_collection(self):
+
+    def test_collectionAnyOrderPos(self):
       col = Collection()
       col.expectAllInAnyOrder()
       col.addRule(Rule().url("apa")
                               .matchAtLeast(1).matchAtMost(2)
-                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+                              .respondWith(Response().code(200).data("Hello!")))
       col.addRule(Rule().url("bepa")
                               .matchTimes(1)
-                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+                              .respondWith(Response().code(200).data("Hello!")))
       col.addRule(Rule().url("cepa")
-                              .matchTimes(1)
-                              .respondWith(Response().code(200).data("Hello!").headers({'apa': 'bepa', 'cepa':'depa'})))
+                              .matchTimes(2)
+                              .respondWith(Response().code(200).data("Hello!")))
 
       httpServer.expect(col)
 
-      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://127.0.0.1:8090/bepa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://127.0.0.1:8090/cepa", headers = {'apa': 'bepa', 'cepa':'depa'})
-      r = requests.get(url = "http://127.0.0.1:8090/apa", headers = {'apa': 'bepa', 'cepa':'depa'})
-
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/cepa")
+      r = requests.get(url = "http://127.0.0.1:8090/bepa")
+      r = requests.get(url = "http://127.0.0.1:8090/cepa")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
 
       self.assertTrue(*httpServer.checkStatus())
 
-    def tearDown(self):
-      pass
+
+    def test_collectionAnyOrderNeg(self):
+      col = Collection()
+      col.expectAllInAnyOrder()
+      col.addRule(Rule().url("apa")
+                              .matchAtLeast(1).matchAtMost(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("bepa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("cepa")
+                              .matchTimes(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+
+      httpServer.expect(col)
+
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/cepa")
+      r = requests.get(url = "http://127.0.0.1:8090/bepa")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+
+      stat, msgs = httpServer.checkStatus()
+      self.assertFalse(stat)
+      self.assertTrue("Expected more request" in "".join(msgs), "Incorrect error message")
+
+
+
+    def test_collectionAnyNumPos(self):
+      col = Collection()
+      col.expectAnyNumber(2)
+      col.addRule(Rule().url("apa")
+                              .matchAtLeast(1).matchAtMost(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("bepa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("cepa")
+                              .matchTimes(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+
+      httpServer.expect(col)
+
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/cepa")
+      r = requests.get(url = "http://127.0.0.1:8090/cepa")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+
+      self.assertTrue(*httpServer.checkStatus())
+
+
+
+    def test_collectionAnyNumNeg(self):
+      col = Collection()
+      col.expectAnyNumber(2)
+      col.addRule(Rule().url("apa")
+                              .matchAtLeast(1).matchAtMost(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("bepa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("cepa")
+                              .matchTimes(2)
+                              .respondWith(Response().code(200).data("Hello!")))
+
+      httpServer.expect(col)
+
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/cepa")
+      r = requests.get(url = "http://127.0.0.1:8090/bepa")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+
+      stat, msgs = httpServer.checkStatus()
+      self.assertFalse(stat)
+      self.assertTrue("Expected URI matching" in "".join(msgs), "Incorrect error message")
+
+
+    def test_nestedCollectionPos(self):
+      colTop = Collection()
+      col1 = Collection()
+      col1.expectAllInAnyOrder()
+      col2 = Collection()
+      col2.expectAllInAnyOrder()
+
+      col1.addRule(Rule().url("c1_1")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col1.addRule(Rule().url("c1_2")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+
+      col2.addRule(Rule().url("c2_1")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col2.addRule(Rule().url("c2_2")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+
+      colTop.addRule(col1)
+      colTop.addRule(col2)
+
+      httpServer.expect(colTop)
+
+      r = requests.get(url = "http://127.0.0.1:8090/c1_2")
+      r = requests.get(url = "http://127.0.0.1:8090/c1_1")
+      r = requests.get(url = "http://127.0.0.1:8090/c2_2")
+      r = requests.get(url = "http://127.0.0.1:8090/c2_1")
+      self.assertTrue(*httpServer.checkStatus())
 
 
 

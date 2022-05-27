@@ -181,6 +181,8 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
 
         #print(json.dumps(ruleData, indent=2))
 
+        #TODO: Validate the rule itself? E.g. can't expect data in a GET request... maybe enough with warning on client-side?
+
         if ruleData['TYPE'] == 'MATCHER':
             rule.type = rules.RequestRule.MATCHER
             for m in ruleData['MATCHERS']:
@@ -197,7 +199,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             rule.collectionType = self.collectionTypeFromJson(ruleData['COLLECTION_TYPE'])
             rule.times = ruleData['CALLED_TIMES']
             if rule.collectionType == rules.RequestRule.ANY_NUM:
-                rule.anyNum = ruleData['ANY_NUMBER']
+                rule.maxNum = ruleData['MAX_NUMBER']
             
             for r in ruleData['RULES']:
                 rule.rules.append(self.ruleFromJson(r))

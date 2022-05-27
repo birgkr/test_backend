@@ -35,6 +35,11 @@ class Response:
 
 
 class RequestRule:
+    NOT_IN_USE = 0  # Rule not tested ok
+    IN_USE = 1      # Rule validated ok at least once (used with ANY_NUM collection)
+    PASSED = 2      # Rule passed minimum criteria (e.g. match at least times, but not at most)
+    DONE = 3        # Rule fully matched, will not be tested again
+
     MATCHER = 0
     COLLECTION = 1
 
@@ -45,13 +50,12 @@ class RequestRule:
     def __init__(self):
         self.type = None
         self.times = 0          # How many times this rule has been matched
-        self.passed = False     # Set to true if this rule is fullfilled (e.g. called "at least" times, but not yet to many)
-        self.falied = False     # Set to true if this rule failed (e.g. called more times than specified)
-        self.done = False       # Set to true when this rule is fully tested and may not be used any more
+
+        self.state = RequestRule.NOT_IN_USE
 
         # Collection specifics
         self.collectionType = None
-        self.anyNum = 1
+        self.maxNum = 1
         self.rules = []
 
         # Matching specifics
@@ -84,7 +88,7 @@ class RequestRule:
             retStr += f"{indent}Collection type: {typeStrs[self.collectionType]}\n"
             retStr += f"{indent}Times: {self.times}\n"
             if self.collectionType == RequestRule.ANY_NUM:
-                retStr += f"{indent}Any num: {self.anyNum}\n"
+                retStr += f"{indent}Max num: {self.maxNum}\n"
             for r in self.rules:
                 retStr += f"{indent}{r.toStr(tab+1, tabSize)}\n"
             

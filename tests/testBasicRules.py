@@ -18,7 +18,7 @@ import unittest
 commandServer = None
 httpServer = None
 
-class TestCommandProt(unittest.TestCase):
+class TestSuite(unittest.TestCase):
     def setUp(self):
       httpServer.reset()
 
@@ -87,20 +87,20 @@ class TestCommandProt(unittest.TestCase):
 
     def test_matchAtLeastPos(self):
       """Validate at least matching times"""
-      httpServer.expect(Rule().method("GET")
+      httpServer.expect(Rule().method("GET").url("apa")
                               .matchAtLeast(3)
                               .respondWith(Response()))
-      r = requests.get(url = "http://127.0.0.1:8090/banan")
-      r = requests.get(url = "http://127.0.0.1:8090/jhljkh")
-      r = requests.get(url = "http://127.0.0.1:8090/ljkah")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+      r = requests.get(url = "http://127.0.0.1:8090/jhlapajkh")
+      r = requests.get(url = "http://127.0.0.1:8090/apaljkah")
 
 
-      httpServer.expect(Rule().method("GET")
+      httpServer.expect(Rule().method("GET").url("bepa")
                               .matchAtLeast(2)
                               .respondWith(Response()))
-      r = requests.get(url = "http://127.0.0.1:8090/banan")
-      r = requests.get(url = "http://127.0.0.1:8090/jhljkh")
-      r = requests.get(url = "http://127.0.0.1:8090/ljkah")
+      r = requests.get(url = "http://127.0.0.1:8090/bepa")
+      r = requests.get(url = "http://127.0.0.1:8090/jhljkhbepa")
+      r = requests.get(url = "http://127.0.0.1:8090/bepaljkah")
 
       self.assertTrue(*httpServer.checkStatus())
 
