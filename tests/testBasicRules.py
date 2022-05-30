@@ -43,6 +43,16 @@ class TestSuite(unittest.TestCase):
       self.assertFalse(*httpServer.checkStatus())
 
 
+    def test_postTestPos(self):
+      """Validate GET request"""
+      httpServer.expect(Rule().method("POST").data("apan bapan").header("Content-Length","10")
+                              .matchTimes(1)
+                              .respondWith(Response()))
+      r = requests.post(url = "http://127.0.0.1:8090/banan", data="apan bapan")
+
+      self.assertTrue(*httpServer.checkStatus())
+
+
 
     def test_matchTimesPos(self):
       """Validate exact matching times"""

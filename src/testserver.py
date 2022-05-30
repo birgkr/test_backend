@@ -17,15 +17,28 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.processRequest()
 
+    def do_HEAD(self):
+        self.processRequest()
+
     def do_POST(self):
         self.processRequest()
                     
     def do_PUT(self):
         self.processRequest()
+
+    def do_DELETE(self):
+        self.processRequest()
     
     def processRequest(self):
         logger.debug(f"Request: {self.command} {self.path} from {self.client_address[0]}")
 
+        self.requestBody = None
+        if self.command == "POST" or self.command == "PUT":
+            if 'Content-Length' in self.headers:
+                contentLen = int(self.headers.get('Content-Length'))
+                self.requestBody = self.rfile.read(contentLen).decode('UTF-8')
+            else:
+                logger.warning("Received POST request without 'Content-Length' header")
 
         # Validate the request
         resp = self.server.owner.validateRequest(self)
@@ -243,8 +256,26 @@ class TestServer:
                         es.addRuleFail(msg)
 
                 elif m.type == rules.Matcher.DATA:
-                    # TODO: read data and search
-                    pass
+                    if request.command != "POST" and request.command != "PUT":
+                        allMatch = False
+                        msg = f"Rule to match data, but received request is a {request.command}..."
+                        logger.debug(msg)
+                        es.addRuleFail(msg)
+                    else:
+                        if request.requestBody is None:
+                            allMatch = False
+                            msg = f"Rule to match data, no data received..."
+                            logger.debug(msg)
+                            es.addRuleFail(msg)
+                        else:
+                            o = re.search(m.matchValue, request.requestBody)
+                            if not o:
+                                allMatch = False
+                                maxLen = min(100, len(request.requestBody))
+                                dataSuffix = ("..." if maxLen != len(request.requestBody) else "")
+                                msg = f"Expected data to contain '{m.matchValue}', but got '{request.requestBody[:maxLen]}{dataSuffix}'"
+                                logger.debug(msg)
+                                es.addRuleFail(msg)                    
                 elif m.type == rules.Matcher.FILE_DATA:
                     # TODO: read file data and search
                     pass
