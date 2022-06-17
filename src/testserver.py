@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 
+# HTTP server that handles and validate incoming requests. 
+# Instantiated by the command server.
+
 import logging
 import http.server
 import threading
 import re
-import json
-
+#import json
 
 import rules
-
-
 logger = logging.getLogger(__name__)
 
 
+
+
+
+
 class RequestHandler(http.server.BaseHTTPRequestHandler):
+    """The handler for incoming HTTP requests. Passes the request to the handler's owner (TestServer) for validation.
+       Whatever response received back from validation is returned back as response to the request."""
+
     def do_GET(self):
         self.processRequest()
 
@@ -30,6 +37,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.processRequest()
     
     def processRequest(self):
+        """Process any incoming request, and sends back a response."""
+
         logger.debug(f"Request: {self.command} {self.path} from {self.client_address[0]}")
 
         self.requestBody = None
@@ -57,6 +66,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     
 
     def log_message(self, format, *args):
+        """Blank out any log messages from the http.server 'subsystem'"""
         #logger.debug(f"Request: {self.command} {self.path} from {self.client_address[0]}")
         pass
     

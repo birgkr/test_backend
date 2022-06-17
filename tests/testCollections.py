@@ -15,12 +15,24 @@ from testapi import Rule, Response, Collection
 
 import unittest
 
-commandServer = None
 httpServer = None
 
-class TestSuite(unittest.TestCase):
+class CollectionsTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+      cls.cmdClient = testapi.CommandClient()
+      cls.cmdClient.connect()
+      cls.httpServer = cls.cmdClient.startTestServer()
+    
+    @classmethod
+    def tearDownClass(cls):
+      cls.httpServer.kill()
+      cls.cmdClient.disconnect()
+
+
     def setUp(self):
-      httpServer.reset()
+      self.httpServer.reset()
 
     def test_collectionInOrderPos(self):
       col = Collection()
@@ -31,12 +43,12 @@ class TestSuite(unittest.TestCase):
                               .matchTimes(1)
                               .respondWith(Response().code(200).data("Hello!")))
 
-      httpServer.expect(col)
+      self.httpServer.expect(col)
 
       r = requests.get(url = "http://127.0.0.1:8090/apa")
       r = requests.get(url = "http://127.0.0.1:8090/apa")
       r = requests.get(url = "http://127.0.0.1:8090/bepa")
-      self.assertTrue(*httpServer.checkStatus())
+      self.assertTrue( self.httpServer.checkStatus())
 
 
     def test_collectionAnyOrderPos(self):
@@ -52,7 +64,7 @@ class TestSuite(unittest.TestCase):
                               .matchTimes(2)
                               .respondWith(Response().code(200).data("Hello!")))
 
-      httpServer.expect(col)
+      self.httpServer.expect(col)
 
       r = requests.get(url = "http://127.0.0.1:8090/apa")
       r = requests.get(url = "http://127.0.0.1:8090/cepa")
@@ -60,7 +72,7 @@ class TestSuite(unittest.TestCase):
       r = requests.get(url = "http://127.0.0.1:8090/cepa")
       r = requests.get(url = "http://127.0.0.1:8090/apa")
 
-      self.assertTrue(*httpServer.checkStatus())
+      self.assertTrue( self.httpServer.checkStatus())
 
 
     def test_collectionAnyOrderNeg(self):
@@ -76,14 +88,14 @@ class TestSuite(unittest.TestCase):
                               .matchTimes(2)
                               .respondWith(Response().code(200).data("Hello!")))
 
-      httpServer.expect(col)
+      self.httpServer.expect(col)
 
       r = requests.get(url = "http://127.0.0.1:8090/apa")
       r = requests.get(url = "http://127.0.0.1:8090/cepa")
       r = requests.get(url = "http://127.0.0.1:8090/bepa")
       r = requests.get(url = "http://127.0.0.1:8090/apa")
 
-      stat, msgs = httpServer.checkStatus()
+      stat, msgs = self.httpServer.checkStatus()
       self.assertFalse(stat)
       self.assertTrue("Expected more request" in "".join(msgs), "Incorrect error message")
 
@@ -102,14 +114,14 @@ class TestSuite(unittest.TestCase):
                               .matchTimes(2)
                               .respondWith(Response().code(200).data("Hello!")))
 
-      httpServer.expect(col)
+      self.httpServer.expect(col)
 
       r = requests.get(url = "http://127.0.0.1:8090/apa")
       r = requests.get(url = "http://127.0.0.1:8090/cepa")
       r = requests.get(url = "http://127.0.0.1:8090/cepa")
       r = requests.get(url = "http://127.0.0.1:8090/apa")
 
-      self.assertTrue(*httpServer.checkStatus())
+      self.assertTrue( self.httpServer.checkStatus())
 
 
 
@@ -126,14 +138,14 @@ class TestSuite(unittest.TestCase):
                               .matchTimes(2)
                               .respondWith(Response().code(200).data("Hello!")))
 
-      httpServer.expect(col)
+      self.httpServer.expect(col)
 
       r = requests.get(url = "http://127.0.0.1:8090/apa")
       r = requests.get(url = "http://127.0.0.1:8090/cepa")
       r = requests.get(url = "http://127.0.0.1:8090/bepa")
       r = requests.get(url = "http://127.0.0.1:8090/apa")
 
-      stat, msgs = httpServer.checkStatus()
+      stat, msgs = self.httpServer.checkStatus()
       self.assertFalse(stat)
       self.assertTrue("Expected URI matching" in "".join(msgs), "Incorrect error message")
 
@@ -162,13 +174,13 @@ class TestSuite(unittest.TestCase):
       colTop.addRule(col1)
       colTop.addRule(col2)
 
-      httpServer.expect(colTop)
+      self.httpServer.expect(colTop)
 
       r = requests.get(url = "http://127.0.0.1:8090/c1_2")
       r = requests.get(url = "http://127.0.0.1:8090/c1_1")
       r = requests.get(url = "http://127.0.0.1:8090/c2_2")
       r = requests.get(url = "http://127.0.0.1:8090/c2_1")
-      self.assertTrue(*httpServer.checkStatus())
+      self.assertTrue( self.httpServer.checkStatus())
 
 
 
@@ -184,9 +196,5 @@ if __name__ == "__main__":
                           logging.StreamHandler()
                       ])
 
-  cmdSrv = testapi.CmdServer()
-  cmdSrv.connect()
-  httpServer = cmdSrv.startTestServer()
   unittest.main(exit=False)
-  httpServer.kill()
   

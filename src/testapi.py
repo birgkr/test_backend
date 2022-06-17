@@ -18,7 +18,7 @@ def upperKey(inParam):
 def exactMatch(s):
     return f"^{s}$"
 
-class CmdServer:
+class CommandClient:
     def __init__(self):
         self.cmdUid = 1
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -28,6 +28,9 @@ class CmdServer:
 
     def connect(self, address="localhost", port=8070):
         self.sock.connect((address, port))
+
+    def disconnect(self):
+        self.sock.close()
 
     def sendCommand(self, jsonData):
 

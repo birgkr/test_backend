@@ -5,11 +5,10 @@
 # 2. A command server that handles the command channel from/to the test framework
 
 
-#TODO: Add logging
-
 import logging
 import socketserver
 import json
+import threading
 
 import testserver
 import rules
@@ -243,11 +242,39 @@ class CommandServer():
     """The CommandServer handles all controls commands sent from the client-side test framework."""
     
     def __init__(self, host="0.0.0.0", port=8070):
+        self.host = host
+        self.port = port
+        self.srvThread = None
+        self.server = None
+
+    def serverRun(self):
+        self.server.serve_forever()
+
+    def start(self, async_server=True):
         """Creates and starts a command server."""
-        logger.info(f"Starting command server at '{host}:{port}'")
+
+        if self.server is not None:
+            logger.error(f"Server already running at {self.host}:{self.port}")
+            return
+
+        logger.info(f"Starting command server at '{self.host}:{self.port}'")
         socketserver.TCPServer.allow_reuse_address = True
-        self.srv = socketserver.TCPServer((host, port), CommandRequestHandler)
-        self.srv.serve_forever()
+        self.server = socketserver.TCPServer((self.host, self.port), CommandRequestHandler)
+        self.server.owner = self
+
+        if async_server:
+            self.srvThread = threading.Thread(target=CommandServer.serverRun, name="T-CommandServer", args=(self,))
+            self.srvThread.start()
+        else:
+            self.serverRun()
+
+
+    def stop(self):
+        logger.debug(f"Stopping command server '{self.host}:{self.port}'")
+
+        self.server.shutdown()
+        self.server.server_close()
+        self.srvThread.join()    
 
 if __name__ == "__main__":
     # configure logging
@@ -259,6 +286,7 @@ if __name__ == "__main__":
         
     
     cmdSrv = CommandServer()
+    cmdSrv.start(async_server=False)
     #httpSrv = 
 
     #cmd = commands.CmdStartServer()
