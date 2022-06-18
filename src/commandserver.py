@@ -55,7 +55,7 @@ class CmdRetStatus:
 
     def toJsonStr(self):
         d = {k.upper():v for k,v in self.__dict__.items()}
-        return json.dumps(self.__dict__, default=lambda x: {k.upper():v for k,v in x.__dict__.items()}).encode('utf-8')
+        return json.dumps(d, default=lambda x: {k.upper():v for k,v in x.__dict__.items()}).encode('utf-8')
 
 
 class CommandRequestHandler(socketserver.BaseRequestHandler):
@@ -64,6 +64,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         """Called when a new chunk of TCP data has been received. Does some validation, parse the data and send a response back to the client."""
         
+        logger.debug("Incomming command data...")
         # Fetch and execute all incomming commands
         magic = self.request.recv(1)
         while len(magic) == 1:
@@ -72,6 +73,8 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             #TODO validate protocol version               
             versionId = self.request.recv(1)
             dataSize = int.from_bytes(self.request.recv(4), 'big')
+            logger.debug(f"Command data size: {dataSize}")
+
             #TODO: Sanity check of data size 
             msgData = self.request.recv(dataSize)
             

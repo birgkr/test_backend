@@ -129,6 +129,12 @@ dmypy.json
 .pyre/
 
 
+# C#
+bindings/c_sharp/**/bin
+bindings/c_sharp/**/obj
+bindings/c_sharp/**/*.cache
+
+
 
 # Other
 design/drawings/**/*.png
