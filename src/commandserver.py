@@ -9,6 +9,7 @@ import logging
 import socketserver
 import json
 import threading
+import time
 
 import testserver
 import rules
@@ -112,6 +113,8 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
             retObj = self.cmdResetServer(cmd['COMMAND_DATA'])
         elif cmd['COMMAND'].upper() == "KILL_SERVER":
             retObj = self.cmdKillServer(cmd['COMMAND_DATA'])
+        elif cmd['COMMAND'].upper() == "KILL_ALL_SERVERS":
+            retObj = self.cmdKillAllServers()
         elif cmd['COMMAND'].upper() == "ADD_RULE":
             retObj = self.cmdAddServerRule(cmd['COMMAND_DATA'])
         elif cmd['COMMAND'].upper() == "FETCH_STATUS":
@@ -133,6 +136,9 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         testServers[nextServerId] = newServer
         nextServerId += 1
         newServer.start()
+        # TODO: Fix the server start wait in some better way...
+        while not newServer.isRunning():
+            time.sleep(0)
 
         retObj = CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Started server, id: {}'.format(newServer.id))
         retObj.command_data = { 'SERVER_ID':newServer.id }
@@ -154,6 +160,15 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         testServers.pop(serverId).stop()
         
         return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Server killed')
+
+    def cmdKillAllServers(self):
+        global testServers
+
+        logger.debug(f"Stopping all HTTP servers")
+        for ts in testServers:
+            testServers[ts].stop()
+        testServers = {}
+        return CmdRetStatus(code=CmdRetStatus.STAT_SUCCESS, text='Servers killed')
 
     def cmdAddServerRule(self, cmdData):
         serverId = cmdData['SERVER_ID']

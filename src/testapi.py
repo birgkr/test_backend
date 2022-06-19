@@ -29,7 +29,12 @@ class CommandClient:
     def connect(self, address="localhost", port=8070):
         self.sock.connect((address, port))
 
-    def disconnect(self):
+    def disconnect(self, killHttpServers=True):
+        if killHttpServers:
+            jsonData = {'COMMAND': 'KILL_ALL_SERVERS',
+                        'COMMAND_DATA': { }  }
+            self.sendCommand(jsonData)        
+
         self.sock.close()
 
     def sendCommand(self, jsonData):

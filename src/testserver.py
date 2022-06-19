@@ -137,6 +137,8 @@ class TestServer:
         self.id = serverId
         self.port = port
         self.ifAddr = ifAddr
+        self.running = False
+
         self.server = None
         self.status = [] # List of validation status (one for each expectation rule plus one for each request that was received but not expected)
 
@@ -144,13 +146,17 @@ class TestServer:
         self.topRule.type = rules.RequestRule.COLLECTION
         self.topRule.collectionType = rules.RequestRule.ALL_IN_ORDER
 
-
+    def isRunning(self):
+        return self.running
 
     def serverRun(self):
         self.server = http.server.HTTPServer((self.ifAddr, self.port), RequestHandler)
         self.server.allow_reuse_address = True
         self.server.owner = self
         logger.info(f"Starting test server at {self.ifAddr}, {self.port}")
+        
+        #TODO: Fix a more stable way of telling that the server is started
+        self.running = True
         self.server.serve_forever()
 
 
@@ -170,9 +176,9 @@ class TestServer:
 
     def stop(self):
         logger.debug(f"Stopping test server '{self.id}'")
-
         self.server.shutdown()
         self.server.server_close()
+        self.running = False
         self.srvThread.join()
 
     def addRule(self, rule):
