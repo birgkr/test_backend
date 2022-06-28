@@ -146,8 +146,31 @@ class CollectionsTests(unittest.TestCase):
       r = requests.get(url = "http://127.0.0.1:8090/apa")
 
       stat, msgs = self.httpServer.checkStatus()
+
       self.assertFalse(stat)
       self.assertTrue("Expected URI matching" in "".join(msgs), "Incorrect error message")
+
+
+    def test_collectionAnyNumNeg2(self):
+      col = Collection()
+      col.expectAnyNumber(1)
+      col.addRule(Rule().url("apa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+      col.addRule(Rule().url("bepa")
+                              .matchTimes(1)
+                              .respondWith(Response().code(200).data("Hello!")))
+
+      self.httpServer.expect(col)
+
+      r = requests.get(url = "http://127.0.0.1:8090/bepa")
+      r = requests.get(url = "http://127.0.0.1:8090/apa")
+
+      stat, msgs = self.httpServer.checkStatus()
+      
+      self.assertFalse(stat)
+      self.assertTrue("No request expected" in "".join(msgs), "Incorrect error message")
+
 
 
     def test_nestedCollectionPos(self):

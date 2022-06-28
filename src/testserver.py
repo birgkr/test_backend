@@ -407,7 +407,8 @@ class TestServer:
                         if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.DONE]):
                             # all rules in sequence marked as done so mark sequence done as well
                             rule.state = rules.RequestRule.DONE 
-                        if rule.times >= rule.maxNum:
+                        if rule.maxNum == len([x for x in rulesToTest if x.state == rules.RequestRule.DONE]):
+                            # maxed out number of rules to test in the collection
                             rule.state = rules.RequestRule.DONE 
                         return resp
                 # No rule in the collection rule tree matched the request
