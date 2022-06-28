@@ -280,7 +280,7 @@ class TestServer:
                     else:
                         if request.requestBody is None:
                             allMatch = False
-                            msg = f"Rule to match data, no data received..."
+                            msg = f"Rule to match data, but no data received..."
                             logger.debug(msg)
                             es.addRuleFail(msg)
                         else:
@@ -400,11 +400,14 @@ class TestServer:
                     resp = self.validateRule(request, r, es)
                     if resp is not None:
                         rule.times += 1
+                        logger.debug(f"ANY_NUM matched... times: {rule.times}, max: {rule.maxNum}")
                         if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.PASSED]):
                             # all rules in sequence marked as passed so mark sequence passed as well
                             rule.state = rules.RequestRule.PASSED
                         if len(rulesToTest) == len([x for x in rulesToTest if x.state == rules.RequestRule.DONE]):
                             # all rules in sequence marked as done so mark sequence done as well
+                            rule.state = rules.RequestRule.DONE 
+                        if rule.times >= rule.maxNum:
                             rule.state = rules.RequestRule.DONE 
                         return resp
                 # No rule in the collection rule tree matched the request

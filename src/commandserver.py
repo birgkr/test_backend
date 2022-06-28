@@ -214,7 +214,7 @@ class CommandRequestHandler(socketserver.BaseRequestHandler):
         elif ruleData['TYPE'] == 'COLLECTION':
             rule.type = rules.RequestRule.COLLECTION
             rule.collectionType = self.collectionTypeFromJson(ruleData['COLLECTION_TYPE'])
-            rule.times = ruleData['CALLED_TIMES']
+            rule.times = 0 #ruleData['CALLED_TIMES']
             if rule.collectionType == rules.RequestRule.ANY_NUM:
                 rule.maxNum = ruleData['MAX_NUMBER']
             

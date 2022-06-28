@@ -21,28 +21,16 @@ httpServer = None
 
 class TestCommandProt(unittest.TestCase):
     def setUp(self):
-        pass
+      httpServer.reset()
 
-    def test_matchAtMostPos(self):
-      """Validate at most matching times"""
+
+    def test_1(self):
       httpServer.expect(Rule().method("GET").url("apa")
-                              .matchAtMost(3)
                               .respondWith(Response()))
 
-      r = requests.get(url = "http://127.0.0.1:8090/apa")
-      r = requests.get(url = "http://127.0.0.1:8090/apa")
-      r = requests.get(url = "http://127.0.0.1:8090/apa")
-
-      httpServer.expect(Rule().method("GET").url("bepa")
-                              .matchAtMost(4)
-                              .respondWith(Response()))
-
-      r = requests.get(url = "http://127.0.0.1:8090/bepa")
-      r = requests.get(url = "http://127.0.0.1:8090/bepa")
       r = requests.get(url = "http://127.0.0.1:8090/bepa")
 
       self.assertTrue(*httpServer.checkStatus())
-
 
     def tearDown(self):
         pass
@@ -58,9 +46,9 @@ if __name__ == "__main__":
                           logging.StreamHandler()
                       ])
 
-  cmdSrv = testapi.CmdServer()
-  cmdSrv.connect()
-  httpServer = cmdSrv.startTestServer()
+  cmdClient = testapi.CommandClient()
+  cmdClient.connect()
+  httpServer = cmdClient.startTestServer()
   unittest.main(exit=False)
   httpServer.kill()
   
